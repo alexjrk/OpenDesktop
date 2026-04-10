@@ -111,7 +111,11 @@ fn compose_action(project: String, action: String) -> Result<String, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_containers, container_action, compose_action])
+        .invoke_handler(tauri::generate_handler![
+            get_containers,
+            container_action,
+            compose_action
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
