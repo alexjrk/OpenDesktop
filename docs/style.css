@@ -56,6 +56,21 @@ nav {
   color: var(--text);
   text-decoration: none;
   letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.hero-icon {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 20px;
+  display: block;
 }
 
 .nav-links {
