@@ -320,7 +320,7 @@ window.openLogs = async function(id, name) {
 
   // Highlight active row
   document.querySelectorAll('tr.active-row').forEach(function(r) { r.classList.remove('active-row'); });
-  const row = document.querySelector('tr[data-container-id="' + id + '"]');
+  const row = document.querySelector('tr[data-container-id="' + CSS.escape(id) + '"]');
   if (row) row.classList.add('active-row');
 
   title.textContent = 'Logs — ' + name;
