@@ -1,49 +1,74 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OpenDesktop</title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
 
-  <body>
-    <div class="app">
-      <header>
-        <h1>OpenDesktop</h1>
-        <div class="header-actions">
-          <span class="container-count" id="container-count"></span>
-          <button class="btn btn-refresh" id="refresh-btn" title="Refresh">↻ Refresh</button>
-        </div>
-      </header>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenDesktop</title>
+  <script type="module" src="/main.js" defer></script>
+</head>
 
-      <div class="filter-bar">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="running">Running</button>
-        <button class="filter-btn" data-filter="stopped">Stopped</button>
+<body>
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Connecting to Docker...</div>
+  </div>
+
+  <div class="app">
+    <header>
+      <h1>OpenDesktop</h1>
+      <div class="header-actions">
+        <span class="container-count" id="container-count"></span>
+        <button class="btn btn-refresh" id="refresh-btn" title="Refresh">↻ Refresh</button>
       </div>
+    </header>
 
-      <div class="table-wrapper">
-        <table id="containers-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Image</th>
-              <th>Status</th>
-              <th>Ports</th>
-              <th>ID</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="containers-body">
-          </tbody>
-        </table>
-      </div>
-
-      <div id="loading" class="loading">Loading containers...</div>
-      <div id="error" class="error" style="display:none"></div>
-      <div id="empty" class="empty" style="display:none">No containers found</div>
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="running">Running</button>
+      <button class="filter-btn" data-filter="stopped">Stopped</button>
     </div>
-  </body>
+
+    <div class="table-wrapper">
+      <table id="containers-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Image</th>
+            <th>Status</th>
+            <th>Ports</th>
+            <th>ID</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="containers-body">
+        </tbody>
+      </table>
+    </div>
+
+    <div id="loading" class="loading" style="display:none">Loading containers...</div>
+    <div id="error" class="error" style="display:none"></div>
+    <div id="empty" class="empty" style="display:none">No containers found</div>
+  </div>
+
+  <div id="logs-panel" class="logs-panel" style="display:none">
+    <div class="logs-header">
+      <span class="logs-title" id="logs-title">Logs</span>
+      <div class="logs-header-actions">
+        <button class="btn logs-refresh-btn" id="logs-refresh-btn" title="Refresh logs">↻</button>
+        <button class="btn logs-close-btn" id="logs-close-btn">✕</button>
+      </div>
+    </div>
+    <div class="logs-search" id="logs-search" style="display:none">
+      <input type="text" id="logs-search-input" placeholder="Search logs..." autocomplete="off" />
+      <span class="logs-search-count" id="logs-search-count"></span>
+      <button class="btn logs-search-nav" id="logs-search-prev" title="Previous">▲</button>
+      <button class="btn logs-search-nav" id="logs-search-next" title="Next">▼</button>
+      <button class="btn logs-search-close" id="logs-search-close">✕</button>
+    </div>
+    <pre class="logs-content" id="logs-content"></pre>
+  </div>
+</body>
+
 </html>

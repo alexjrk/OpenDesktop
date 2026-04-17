@@ -1,6 +1,10 @@
-# OpenDesktop
+<p align="center">
+  <img src="icon.svg" alt="OpenDesktop" width="80">
+</p>
 
-A lightweight, minimalist desktop app for viewing and managing Docker containers running inside WSL. Built with [Tauri v2](https://tauri.app/) for a tiny footprint and native performance.
+<h1 align="center">OpenDesktop</h1>
+
+<p align="center">A lightweight, minimalist desktop app for viewing and managing Docker containers running inside WSL.<br>Built with <a href="https://tauri.app/">Tauri v2</a> for a tiny footprint and native performance.</p>
 
 ![Windows](https://img.shields.io/badge/platform-Windows-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
