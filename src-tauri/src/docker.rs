@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Debug, PartialEq)]
 pub struct Container {
@@ -12,22 +12,56 @@ pub struct Container {
     pub project: String,
 }
 
+#[derive(Deserialize)]
+struct DockerPsEntry {
+    #[serde(rename = "ID", default)]
+    id: String,
+    #[serde(rename = "Image", default)]
+    image: String,
+    #[serde(rename = "Command", default)]
+    command: String,
+    #[serde(rename = "CreatedAt", default)]
+    created: String,
+    #[serde(rename = "Status", default)]
+    status: String,
+    #[serde(rename = "Ports", default)]
+    ports: String,
+    #[serde(rename = "Names", default)]
+    names: String,
+    #[serde(rename = "Labels", default)]
+    labels: String,
+}
+
+fn extract_compose_project(labels: &str) -> String {
+    labels
+        .split(',')
+        .find_map(|kv| {
+            let (k, v) = kv.split_once('=')?;
+            if k.trim() == "com.docker.compose.project" {
+                Some(v.trim().to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default()
+}
+
 pub fn parse_containers(output: &str) -> Vec<Container> {
     output
         .lines()
         .filter(|line| !line.trim().is_empty())
-        .map(|line| {
-            let parts: Vec<&str> = line.split(";;").collect();
-            Container {
-                id: parts.first().unwrap_or(&"").to_string(),
-                image: parts.get(1).unwrap_or(&"").to_string(),
-                command: parts.get(2).unwrap_or(&"").to_string(),
-                created: parts.get(3).unwrap_or(&"").to_string(),
-                status: parts.get(4).unwrap_or(&"").to_string(),
-                ports: parts.get(5).unwrap_or(&"").to_string(),
-                names: parts.get(6).unwrap_or(&"").to_string(),
-                project: parts.get(7).unwrap_or(&"").to_string(),
-            }
+        .filter_map(|line| {
+            let entry: DockerPsEntry = serde_json::from_str(line).ok()?;
+            Some(Container {
+                id: entry.id,
+                image: entry.image,
+                command: entry.command,
+                created: entry.created,
+                status: entry.status,
+                ports: entry.ports,
+                names: entry.names,
+                project: extract_compose_project(&entry.labels),
+            })
         })
         .collect()
 }

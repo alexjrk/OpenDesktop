@@ -9,7 +9,7 @@ use crate::docker::{
 pub async fn get_containers() -> Result<Vec<Container>, String> {
     async_runtime::spawn_blocking(|| {
         let output = Command::new("wsl")
-            .args(["bash", "-c", "docker ps -a --format '{{.ID}};;{{.Image}};;{{.Command}};;{{.CreatedAt}};;{{.Status}};;{{.Ports}};;{{.Names}};;{{.Label \"com.docker.compose.project\"}}'"])
+            .args(["--", "docker", "ps", "-a", "--format", "json"])
             .output()
             .map_err(|e| format!("Failed to execute wsl: {}", e))?;
 
@@ -51,18 +51,8 @@ pub async fn compose_action(project: String, action: String) -> Result<String, S
     validate_compose_action(&action)?;
 
     async_runtime::spawn_blocking(move || {
-        let cmd = if action == "start" {
-            format!("docker compose -p '{}' start", project)
-        } else if action == "stop" {
-            format!("docker compose -p '{}' stop", project)
-        } else if action == "down" {
-            format!("docker compose -p '{}' down", project)
-        } else {
-            format!("docker compose -p '{}' restart", project)
-        };
-
         let output = Command::new("wsl")
-            .args(["bash", "-c", &cmd])
+            .args(["--", "docker", "compose", "-p", &project, &action])
             .output()
             .map_err(|e| format!("Failed to execute wsl: {}", e))?;
 
@@ -86,6 +76,11 @@ pub async fn get_container_logs(id: String, tail: Option<u32>) -> Result<String,
             .args(["docker", "logs", "--tail", &tail_count.to_string(), &id])
             .output()
             .map_err(|e| format!("Failed to execute wsl: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("Docker logs failed: {}", stderr));
+        }
 
         let mut logs = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr);

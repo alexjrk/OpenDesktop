@@ -54,7 +54,7 @@ function renderContainerRow(c, isCompose) {
   const statusClass = getStatusClass(c.status);
   const running = isRunning(c.status);
   const rowClass = isCompose ? ' class="compose-child"' : '';
-  return '<tr' + rowClass + ' onclick="openLogs(\'' + c.id + '\', \'' + escapeHtml(c.names) + '\')" data-container-id="' + escapeHtml(c.id) + '">' +
+  return '<tr' + rowClass + ' data-container-id="' + escapeHtml(c.id) + '" data-container-name="' + escapeHtml(c.names) + '">' +
     '<td title="' + escapeHtml(c.names) + '">' + escapeHtml(c.names) + '</td>' +
     '<td title="' + escapeHtml(c.image) + '">' + escapeHtml(c.image) + '</td>' +
     '<td><span class="status-badge"><span class="status-dot ' + statusClass + '"></span>' + escapeHtml(c.status) + '</span></td>' +
@@ -62,10 +62,10 @@ function renderContainerRow(c, isCompose) {
     '<td><span class="container-id">' + escapeHtml(c.id.substring(0, 12)) + '</span></td>' +
     '<td>' +
       (running
-        ? '<button class="action-btn stop" onclick="event.stopPropagation(); containerAction(\'' + c.id + '\', \'stop\')">Stop</button>' +
-          '<button class="action-btn" onclick="event.stopPropagation(); containerAction(\'' + c.id + '\', \'restart\')">Restart</button>'
-        : '<button class="action-btn start" onclick="event.stopPropagation(); containerAction(\'' + c.id + '\', \'start\')">Start</button>' +
-          '<button class="action-btn remove" onclick="event.stopPropagation(); containerAction(\'' + c.id + '\', \'rm\')">Remove</button>') +
+        ? '<button class="action-btn stop" data-action="stop" data-id="' + escapeHtml(c.id) + '">Stop</button>' +
+          '<button class="action-btn" data-action="restart" data-id="' + escapeHtml(c.id) + '">Restart</button>'
+        : '<button class="action-btn start" data-action="start" data-id="' + escapeHtml(c.id) + '">Start</button>' +
+          '<button class="action-btn remove" data-action="rm" data-id="' + escapeHtml(c.id) + '">Remove</button>') +
     '</td>' +
   '</tr>';
 }
@@ -107,15 +107,15 @@ function renderContainers(containers) {
       const groupStatus = allUp ? 'running' : (runCount === 0 ? 'exited' : 'partial');
 
       const groupButtons = allUp
-        ? '<button class="action-btn stop group-action-btn" onclick="event.stopPropagation(); composeAction(\'' + escapeHtml(project) + '\', \'stop\')">Stop All</button>' +
-          '<button class="action-btn group-action-btn" onclick="event.stopPropagation(); composeAction(\'' + escapeHtml(project) + '\', \'restart\')">Restart All</button>'
+        ? '<button class="action-btn stop group-action-btn" data-compose-action="stop" data-project="' + escapeHtml(project) + '">Stop All</button>' +
+          '<button class="action-btn group-action-btn" data-compose-action="restart" data-project="' + escapeHtml(project) + '">Restart All</button>'
         : (runCount === 0
-          ? '<button class="action-btn start group-action-btn" onclick="event.stopPropagation(); composeAction(\'' + escapeHtml(project) + '\', \'start\')">Start All</button>' +
-            '<button class="action-btn remove group-action-btn" onclick="event.stopPropagation(); composeAction(\'' + escapeHtml(project) + '\', \'down\')">Remove All</button>'
-          : '<button class="action-btn start group-action-btn" onclick="event.stopPropagation(); composeAction(\'' + escapeHtml(project) + '\', \'start\')">Start All</button>' +
-            '<button class="action-btn stop group-action-btn" onclick="event.stopPropagation(); composeAction(\'' + escapeHtml(project) + '\', \'stop\')">Stop All</button>');
+          ? '<button class="action-btn start group-action-btn" data-compose-action="start" data-project="' + escapeHtml(project) + '">Start All</button>' +
+            '<button class="action-btn remove group-action-btn" data-compose-action="down" data-project="' + escapeHtml(project) + '">Remove All</button>'
+          : '<button class="action-btn start group-action-btn" data-compose-action="start" data-project="' + escapeHtml(project) + '">Start All</button>' +
+            '<button class="action-btn stop group-action-btn" data-compose-action="stop" data-project="' + escapeHtml(project) + '">Stop All</button>');
 
-      html += '<tr class="group-header" onclick="toggleGroup(\'' + escapeHtml(project) + '\')">' +
+      html += '<tr class="group-header" data-project="' + escapeHtml(project) + '">' +
         '<td colspan="6">' +
           '<span class="group-chevron">' + chevron + '</span>' +
           '<span class="group-dot ' + groupStatus + '"></span>' +
@@ -201,12 +201,15 @@ let currentLogsName = null;
 let currentLogsText = '';
 let searchMatches = [];
 let currentMatchIndex = -1;
+let logsRequestToken = 0;
 
 async function fetchLogs(id, name) {
+  const token = ++logsRequestToken;
   const content = document.getElementById('logs-content');
   content.innerHTML = '<span class="logs-loading">Loading logs...</span>';
   try {
     const logs = await invoke('get_container_logs', { id, tail: 200 });
+    if (token !== logsRequestToken) return;
     currentLogsText = logs || '(no logs)';
     content.textContent = currentLogsText;
     content.scrollTop = content.scrollHeight;
@@ -217,6 +220,7 @@ async function fetchLogs(id, name) {
       applyLogSearch(searchInput.value);
     }
   } catch (e) {
+    if (token !== logsRequestToken) return;
     currentLogsText = '';
     content.textContent = 'Error fetching logs: ' + e;
   }
@@ -367,6 +371,33 @@ window.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         openLogSearch();
       }
+    }
+  });
+
+  document.getElementById('containers-body').addEventListener('click', function(e) {
+    var composeBtn = e.target.closest('[data-compose-action]');
+    if (composeBtn) {
+      e.stopPropagation();
+      composeAction(composeBtn.dataset.project, composeBtn.dataset.composeAction);
+      return;
+    }
+
+    var actionBtn = e.target.closest('[data-action]');
+    if (actionBtn) {
+      e.stopPropagation();
+      containerAction(actionBtn.dataset.id, actionBtn.dataset.action);
+      return;
+    }
+
+    var groupHeader = e.target.closest('.group-header[data-project]');
+    if (groupHeader) {
+      toggleGroup(groupHeader.dataset.project);
+      return;
+    }
+
+    var row = e.target.closest('tr[data-container-id][data-container-name]');
+    if (row) {
+      openLogs(row.dataset.containerId, row.dataset.containerName);
     }
   });
 

@@ -6,7 +6,7 @@ mod tests {
 
     #[test]
     fn parse_single_container() {
-        let output = "abc123;;nginx:latest;;\"nginx -g 'daemon off;'\";;2026-04-10 12:00:00;;Up 2 hours;;0.0.0.0:80->80/tcp;;my-nginx;;myproject\n";
+        let output = r#"{"ID":"abc123","Image":"nginx:latest","Command":"nginx -g 'daemon off;'","CreatedAt":"2026-04-10 12:00:00","Status":"Up 2 hours","Ports":"0.0.0.0:80->80/tcp","Names":"my-nginx","Labels":"com.docker.compose.project=myproject"}"#;
         let containers = parse_containers(output);
         assert_eq!(containers.len(), 1);
         assert_eq!(containers[0].id, "abc123");
@@ -18,7 +18,12 @@ mod tests {
 
     #[test]
     fn parse_multiple_containers() {
-        let output = "aaa;;img1;;cmd1;;created1;;Up 1 hour;;80/tcp;;c1;;proj\nbbb;;img2;;cmd2;;created2;;Exited (0);;;;c2;;proj\n";
+        let output = concat!(
+            r#"{"ID":"aaa","Image":"img1","Command":"cmd1","CreatedAt":"created1","Status":"Up 1 hour","Ports":"80/tcp","Names":"c1","Labels":"com.docker.compose.project=proj"}"#,
+            "\n",
+            r#"{"ID":"bbb","Image":"img2","Command":"cmd2","CreatedAt":"created2","Status":"Exited (0)","Ports":"","Names":"c2","Labels":"com.docker.compose.project=proj"}"#,
+            "\n",
+        );
         let containers = parse_containers(output);
         assert_eq!(containers.len(), 2);
         assert_eq!(containers[0].id, "aaa");
@@ -34,14 +39,18 @@ mod tests {
 
     #[test]
     fn parse_blank_lines_ignored() {
-        let output = "\n\naaa;;img;;cmd;;created;;Up;;ports;;name;;proj\n\n";
+        let output = concat!(
+            "\n\n",
+            r#"{"ID":"aaa","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Up","Ports":"ports","Names":"name","Labels":"com.docker.compose.project=proj"}"#,
+            "\n\n",
+        );
         let containers = parse_containers(output);
         assert_eq!(containers.len(), 1);
     }
 
     #[test]
     fn parse_missing_fields_default_to_empty() {
-        let output = "abc123;;nginx\n";
+        let output = r#"{"ID":"abc123","Image":"nginx"}"#;
         let containers = parse_containers(output);
         assert_eq!(containers.len(), 1);
         assert_eq!(containers[0].id, "abc123");
@@ -52,22 +61,21 @@ mod tests {
 
     #[test]
     fn parse_no_compose_project() {
-        let output = "abc;;img;;cmd;;created;;Up;;80/tcp;;name;;\n";
+        let output = r#"{"ID":"abc","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Up","Ports":"80/tcp","Names":"name","Labels":""}"#;
         let containers = parse_containers(output);
         assert_eq!(containers[0].project, "");
     }
 
     #[test]
     fn parse_container_with_special_chars_in_name() {
-        let output = "abc;;img;;cmd;;created;;Up;;80/tcp;;my-app_web_1;;\n";
+        let output = r#"{"ID":"abc","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Up","Ports":"80/tcp","Names":"my-app_web_1","Labels":""}"#;
         let containers = parse_containers(output);
         assert_eq!(containers[0].names, "my-app_web_1");
     }
 
     #[test]
     fn parse_container_with_multiple_ports() {
-        let output =
-            "abc;;img;;cmd;;created;;Up;;0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp;;name;;proj\n";
+        let output = r#"{"ID":"abc","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Up","Ports":"0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp","Names":"name","Labels":"com.docker.compose.project=proj"}"#;
         let containers = parse_containers(output);
         assert_eq!(
             containers[0].ports,
@@ -77,14 +85,21 @@ mod tests {
 
     #[test]
     fn parse_container_empty_ports() {
-        let output = "abc;;img;;cmd;;created;;Exited (0);;;;name;;proj\n";
+        let output = r#"{"ID":"abc","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Exited (0)","Ports":"","Names":"name","Labels":"com.docker.compose.project=proj"}"#;
         let containers = parse_containers(output);
         assert_eq!(containers[0].ports, "");
     }
 
     #[test]
     fn parse_containers_mixed_projects() {
-        let output = "a;;img;;cmd;;created;;Up;;80;;c1;;proj1\nb;;img;;cmd;;created;;Up;;81;;c2;;proj1\nc;;img;;cmd;;created;;Up;;82;;c3;;\n";
+        let output = concat!(
+            r#"{"ID":"a","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Up","Ports":"80","Names":"c1","Labels":"com.docker.compose.project=proj1"}"#,
+            "\n",
+            r#"{"ID":"b","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Up","Ports":"81","Names":"c2","Labels":"com.docker.compose.project=proj1"}"#,
+            "\n",
+            r#"{"ID":"c","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Up","Ports":"82","Names":"c3","Labels":""}"#,
+            "\n",
+        );
         let containers = parse_containers(output);
         assert_eq!(containers.len(), 3);
         assert_eq!(containers[0].project, "proj1");
@@ -94,14 +109,14 @@ mod tests {
 
     #[test]
     fn parse_container_exited_status_with_code() {
-        let output = "abc;;img;;cmd;;created;;Exited (137);;;;name;;\n";
+        let output = r#"{"ID":"abc","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Exited (137)","Ports":"","Names":"name","Labels":""}"#;
         let containers = parse_containers(output);
         assert_eq!(containers[0].status, "Exited (137)");
     }
 
     #[test]
     fn parse_container_restarting_status() {
-        let output = "abc;;img;;cmd;;created;;Restarting (1) 5 seconds ago;;;;name;;\n";
+        let output = r#"{"ID":"abc","Image":"img","Command":"cmd","CreatedAt":"created","Status":"Restarting (1) 5 seconds ago","Ports":"","Names":"name","Labels":""}"#;
         let containers = parse_containers(output);
         assert!(containers[0].status.contains("Restarting"));
     }
@@ -113,12 +128,15 @@ mod tests {
     }
 
     #[test]
-    fn parse_single_field_line() {
-        let output = "abc123\n";
+    fn parse_malformed_line_skipped() {
+        let output = concat!(
+            "not valid json\n",
+            r#"{"ID":"abc123","Image":"nginx","Command":"","CreatedAt":"","Status":"Up","Ports":"","Names":"web","Labels":""}"#,
+            "\n",
+        );
         let containers = parse_containers(output);
         assert_eq!(containers.len(), 1);
         assert_eq!(containers[0].id, "abc123");
-        assert_eq!(containers[0].image, "");
     }
 
     // --- Validation tests ---
